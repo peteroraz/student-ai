@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Performance Predictor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .page { max-width: 860px; margin: 0 auto; }
+
+    h1 { font-size: 26px; font-weight: 700; color: #1e3a8a; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #6b7280; margin-bottom: 28px; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .tab {
+      padding: 10px 24px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; border: 2px solid #d1d5db;
+      background: white; color: #6b7280; transition: all 0.2s;
+    }
+    .tab.active { background: #1e3a8a; color: white; border-color: #1e3a8a; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* CARD */
+    .card {
+      background: white; border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      padding: 28px 32px; color: white;
+    }
+    .card-header h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .card-header p  { font-size: 13px; opacity: 0.85; }
+    .card-body { padding: 32px; }
+
+    .field { margin-bottom: 20px; }
+    label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #374151; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    input, select {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 15px; color: #111; outline: none; transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: #2563eb; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .btn {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: white; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      margin-top: 8px; transition: opacity 0.2s;
+    }
+    .btn:hover   { opacity: 0.9; }
+    .btn:disabled{ opacity: 0.6; cursor: not-allowed; }
+
+    /* SINGLE RESULT */
+    #result { margin-top: 28px; display: none; }
+    .result-box { border-radius: 12px; padding: 24px; text-align: center; }
+    .result-box.pass { background: #f0fdf4; border: 2px solid #22c55e; }
+    .result-box.fail { background: #fef2f2; border: 2px solid #ef4444; }
+    .result-icon  { font-size: 40px; margin-bottom: 8px; }
+    .result-label { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .result-box.pass .result-label { color: #15803d; }
+    .result-box.fail .result-label { color: #b91c1c; }
+    .result-prob  { font-size: 14px; color: #6b7280; margin-bottom: 16px; }
+    .progress-wrap {
+      background: #e5e7eb; border-radius: 99px;
+      height: 10px; margin: 12px 0 20px; overflow: hidden;
+    }
+    .progress-bar { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .pass .progress-bar { background: #22c55e; }
+    .fail .progress-bar { background: #ef4444; }
+    .recommendations { text-align: left; margin-top: 4px; }
+    .recommendations h4 {
+      font-size: 13px; font-weight: 700; color: #b91c1c;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;
+    }
+    .rec-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 14px; color: #374151; margin-bottom: 8px;
+      background: #fff7f7; padding: 8px 12px;
+      border-radius: 8px; border-left: 3px solid #ef4444;
+    }
+
+    /* CSV UPLOAD */
+    .upload-area {
+      border: 2px dashed #d1d5db; border-radius: 12px;
+      padding: 40px; text-align: center; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 20px; background: #f9fafb;
+    }
+    .upload-area:hover, .upload-area.drag { border-color: #2563eb; background: #eff6ff; }
+    .upload-area .upload-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-area h3 { font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .upload-area p  { font-size: 13px; color: #9ca3af; }
+    #fileInput { display: none; }
+
+    .csv-format {
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 16px; margin-bottom: 20px;
+      font-family: monospace; font-size: 12px; color: #475569;
+    }
+    .csv-format strong { display: block; margin-bottom: 6px; color: #1e3a8a; font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+
+    /* BULK RESULTS TABLE */
+    #bulkResult { margin-top: 28px; display: none; }
+    .bulk-summary {
+      display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .summary-card {
+      flex: 1; min-width: 120px; padding: 16px; border-radius: 10px;
+      text-align: center;
+    }
+    .summary-card.total   { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .summary-card.passing { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .summary-card.failing { background: #fef2f2; border: 1px solid #fecaca; }
+    .summary-card .num  { font-size: 32px; font-weight: 700; }
+    .summary-card .lbl  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .total   .num { color: #1d4ed8; }
+    .passing .num { color: #15803d; }
+    .failing .num { color: #b91c1c; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th {
+      background: #0f172a; color: #e2e8f0;
+      padding: 12px 14px; text-align: left; font-weight: 600;
+    }
+    td { padding: 11px 14px; border-bottom: 1px solid #e8e8e8; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    tr:hover td { background: #eff6ff; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 600;
+    }
+    .badge.pass { background: #dcfce7; color: #15803d; }
+    .badge.fail { background: #fee2e2; color: #b91c1c; }
+
+    .rec-list { font-size: 12px; color: #6b7280; }
+
+    .loader {
+      display: inline-block; width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .download-btn {
+      display: inline-block; margin-top: 16px; padding: 10px 20px;
+      background: #0f172a; color: white; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <h1>🎓 Student Performance Predictor</h1>
+  <p class="page-subtitle">Powered by Random Forest AI · Built for teachers</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('single')">👤 Single Student</div>
+    <div class="tab"        onclick="switchTab('bulk')">📋 Bulk Upload (CSV)</div>
+  </div>
+
+  <!-- ── SINGLE STUDENT ── -->
+  <div class="panel active" id="panel-single">
+    <div class="card">
+      <div class="card-header">
+        <h2>Single Student Assessment</h2>
+        <p>Enter one student's details to get an instant prediction</p>
+      </div>
+      <div class="card-body">
+
+        <div class="field">
+          <label>Student Name</label>
+          <input type="text" id="name" placeholder="e.g. Emeka Obi">
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Attendance Rate</label>
+            <input type="number" id="attendance" min="0" max="100" placeholder="85">
+            <div class="hint">Percentage (0 – 100)</div>
+          </div>
+          <div class="field">
+            <label>Daily Study Hours</label>
+            <input type="number" id="study_hours" min="0" max="10" step="0.5" placeholder="3">
+            <div class="hint">Hours per day</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Previous Exam Score</label>
+            <input type="number" id="prev_score" min="0" max="100" placeholder="65">
+            <div class="hint">Score out of 100</div>
+          </div>
+          <div class="field">
+            <label>Family Income Level</label>
+            <select id="family_income">
+              <option value="">Select level</option>
+              <option value="1">1 — Very Low</option>
+              <option value="2">2 — Low</option>
+              <option value="3">3 — Middle</option>
+              <option value="4">4 — High</option>
+              <option value="5">5 — Very High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Internet Access</label>
+            <select id="internet">
+              <option value="">Select</option>
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Teacher Interaction</label>
+            <input type="number" id="teacher_inter" min="1" max="10" placeholder="7">
+            <div class="hint">Score 1 (low) – 10 (high)</div>
+          </div>
+        </div>
+
+        <button class="btn" id="predictBtn" onclick="predictSingle()">Predict Performance</button>
+
+        <div id="result">
+          <div class="result-box" id="resultBox">
+            <div class="result-icon"  id="resultIcon"></div>
+            <div class="result-label" id="resultLabel"></div>
+            <div class="result-prob"  id="resultProb"></div>
+            <div class="progress-wrap">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="recommendations" id="recommendations"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BULK UPLOAD ── -->
+  <div class="panel" id="panel-bulk">
+    <div class="card">
+      <div class="card-header">
+        <h2>Bulk Student Assessment</h2>
+        <p>Upload a CSV file to predict an entire class at once</p>
+      </div>
+      <div class="card-body">
+
+        <div class="csv-format">
+          <strong>📄 Required CSV format:</strong>
+          name,attendance,study_hours,prev_score,family_income,internet,teacher_inter<br>
+          Emeka Obi,55,1,35,1,0,2<br>
+          Amaka Nwosu,95,5,78,4,1,8
+        </div>
+
+        <div class="upload-area" id="uploadArea"
+             onclick="document.getElementById('fileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="handleDrop(event)">
+          <div class="upload-icon">📂</div>
+          <h3 id="uploadLabel">Click to upload or drag & drop your CSV</h3>
+          <p>Supports .csv files only</p>
+        </div>
+
+        <input type="file" id="fileInput" accept=".csv" onchange="handleFile(this.files[0])">
+
+        <button class="btn" id="bulkBtn" onclick="predictBulk()" disabled>
+          Predict All Students
+        </button>
+
+        <div id="bulkResult">
+          <div class="bulk-summary">
+            <div class="summary-card total">
+              <div class="num" id="totalCount">0</div>
+              <div class="lbl">Total Students</div>
+            </div>
+            <div class="summary-card passing">
+              <div class="num" id="passCount">0</div>
+              <div class="lbl">On Track to Pass</div>
+            </div>
+            <div class="summary-card failing">
+              <div class="num" id="failCount">0</div>
+              <div class="lbl">At Risk of Failing</div>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto">
+            <table id="resultsTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Result</th>
+                  <th>Confidence</th>
+                  <th>Recommendations</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+
+          <button class="download-btn" onclick="downloadCSV()">⬇ Download Results as CSV</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let bulkData = [];
+  let selectedFile = null;
+
+  // ── TAB SWITCHING ──────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0) === (tab === 'single'));
+    });
+    document.getElementById('panel-single').classList.toggle('active', tab === 'single');
+    document.getElementById('panel-bulk').classList.toggle('active',   tab === 'bulk');
+  }
+
+  // ── SINGLE PREDICT ─────────────────────────────────────────
+  async function predictSingle() {
+    const fields = ['attendance','study_hours','prev_score',
+                    'family_income','internet','teacher_inter'];
+    for (const f of fields) {
+      if (!document.getElementById(f).value) {
+        alert('Please fill in all fields.'); return;
+      }
+    }
+
+    const btn = document.getElementById('predictBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span>Predicting...';
+
+    const payload = {
+      attendance:    document.getElementById('attendance').value,
+      study_hours:   document.getElementById('study_hours').value,
+      prev_score:    document.getElementById('prev_score').value,
+      family_income: document.getElementById('family_income').value,
+      internet:      document.getElementById('internet').value,
+      teacher_inter: document.getElementById('teacher_inter').value,
+    };
+
+    try {
+      const res  = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const name = document.getElementById('name').value || 'This student';
+
+      const box   = document.getElementById('resultBox');
+      const icon  = document.getElementById('resultIcon');
+      const label = document.getElementById('resultLabel');
+      const prob  = document.getElementById('resultProb');
+      const bar   = document.getElementById('progressBar');
+      const recs  = document.getElementById('recommendations');
+
+      if (data.prediction === 1) {
+        box.className     = 'result-box pass';
+        icon.textContent  = '✅';
+        label.textContent = `${name} is ON TRACK TO PASS`;
+        prob.textContent  = `Confidence: ${data.pass_probability}%`;
+        bar.style.width   = data.pass_probability + '%';
+        recs.innerHTML    = '';
+      } else {
+        box.className     = 'result-box fail';
+        icon.textContent  = '⚠️';
+        label.textContent = `${name} is AT RISK OF FAILING`;
+        prob.textContent  = `Probability of failing: ${data.fail_probability}%`;
+        bar.style.width   = data.fail_probability + '%';
+        recs.innerHTML    = data.recommendations.length
+          ? '<h4>📋 Recommended Actions</h4>' +
+            data.recommendations.map(r => `<div class="rec-item">→ ${r}</div>`).join('')
+          : '';
+      }
+      document.getElementById('result').style.display = 'block';
+
+    } catch (e) {
+      alert('Something went wrong. Make sure Flask is running.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Predict Performance';
+  }
+
+  // ── FILE HANDLING ──────────────────────────────────────────
+  function handleFile(file) {
+    if (!file) return;
+    selectedFile = file;
+    document.getElementById('uploadLabel').textContent = `✅ ${file.name} selected`;
+    document.getElementById('uploadArea').style.borderColor = '#22c55e';
+    document.getElementById('bulkBtn').disabled = false;
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadArea').classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) handleFile(file);
+    else alert('Please drop a .csv file.');
+  }
+
+  // ── BULK PREDICT ───────────────────────────────────────────
+  async function predictBulk() {
+    if (!selectedFile) { alert('Please select a CSV file first.'); return; }
+
+    const btn = document.getElementById('bulkBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loader"></span>Predicting all students...';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res  = await fetch('/predict_bulk', { method: 'POST', body: formData });
+      bulkData   = await res.json();
+
+      const passing = bulkData.filter(s => s.prediction === 1).length;
+      const failing = bulkData.filter(s => s.prediction === 0).length;
+
+      document.getElementById('totalCount').textContent = bulkData.length;
+      document.getElementById('passCount').textContent  = passing;
+      document.getElementById('failCount').textContent  = failing;
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = bulkData.map((s, i) => {
+        if (s.error) return `<tr><td>${i+1}</td><td>${s.name}</td><td colspan="3" style="color:red">Error: ${s.error}</td></tr>`;
+        const badge = s.prediction === 1
+          ? '<span class="badge pass">✅ PASS</span>'
+          : '<span class="badge fail">⚠️ FAIL</span>';
+        const conf  = s.prediction === 1
+          ? `${s.pass_probability}% pass`
+          : `${s.fail_probability}% fail`;
+        const recs  = s.recommendations.length
+          ? `<div class="rec-list">${s.recommendations.join('<br>')}</div>`
+          : '<span style="color:#9ca3af">—</span>';
+        return `<tr><td>${i+1}</td><td><strong>${s.name}</strong></td><td>${badge}</td><td>${conf}</td><td>${recs}</td></tr>`;
+      }).join('');
+
+      document.getElementById('bulkResult').style.display = 'block';
+
+    } catch (e) {
+      alert('Something went wrong. Make sure Flask is running.');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = 'Predict All Students';
+  }
+
+  // ── DOWNLOAD RESULTS ───────────────────────────────────────
+  function downloadCSV() {
+    const rows = [['Name','Result','Confidence','Recommendations']];
+    bulkData.forEach(s => {
+      rows.push([
+        s.name,
+        s.prediction === 1 ? 'PASS' : 'FAIL',
+        s.prediction === 1 ? `${s.pass_probability}%` : `${s.fail_probability}%`,
+        s.recommendations.join('; ')
+      ]);
+    });
+    const csv  = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'student_results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+</body>
+</html>
